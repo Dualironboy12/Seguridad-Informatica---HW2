@@ -48,11 +48,11 @@ Incluye **todas** estas secciones (en este orden recomendado):
 
 ### 2.1 Qué poner en cada sección (plantilla útil)
 
-**Abstract (150–250 palabras):** objetivo del IDS, entorno (escenario 1 o 2), ataques evaluados, resultado cualitativo (qué se detectó), conclusión breve.
+**Abstract (150–250 palabras):** objetivo del IDS, entorno (Escenario A: 1 laptop / 2 VMs, o Escenario B: 3 laptops), ataques evaluados, resultado cualitativo (qué se detectó), conclusión breve.
 
-**Introduction:** qué es un IDS, Snort (NIDS basado en reglas), por qué detectar SYN flood / ARP-DNS / recon; objetivo del homework; alcance y limitaciones (laboratorio aislado).
+**Introduction:** qué es un IDS, Snort (NIDS basado en reglas), por qué detectar SYN flood / ARP-DNS / recon; objetivo del homework; alcance y limitaciones (laboratorio aislado; colocación del sensor según el escenario).
 
-**Methodology:** topología, SO/VMs, instalación Snort, reglas escritas, herramientas usadas para generar tráfico de prueba, procedimiento de captura (Wireshark/Snort alerts), criterios de éxito (“alerta aparece en `alert`/`fast` log”).
+**Methodology:** topología (A o B), SO, IPs, dónde corre Snort, reglas escritas, herramientas usadas para generar tráfico de prueba, procedimiento de captura (Wireshark/Snort alerts), criterios de éxito (“alerta aparece en `alert`/`fast` log”).
 
 **Results and Discussion:** capturas de pantalla de alertas Snort, reglas usadas, comparación antes/después, falsos positivos, limitaciones. Discute por qué cada regla dispara.
 
@@ -107,132 +107,140 @@ Con `traceroute`, `ping`/`hping3` y `nmap` se obtiene layout, hosts, puertos, SO
 
 ## 4. Escenarios de laboratorio
 
-Elige **uno** (o documenta ambos si el equipo tiene recursos). En el reporte describe claramente el escenario usado.
+Elige **exactamente uno** y descríbelo en Methodology. No hace falta un segundo escenario ni hardware extra (hub, switch managed, cuarta VM).
 
-### Escenario A — Una sola laptop Linux + VirtualBox
-
-**Idea:** todo el laboratorio vive en una laptop; las “máquinas” son VMs en una red interna virtual.
-
-#### Topología recomendada (3–4 VMs)
-
-```text
-[ Host Linux + VirtualBox ]
-        |
-   VirtualBox Host-Only / Internal Network  (ej. 192.168.56.0/24)
-        |
-   +----+----+------------+--------------+
-   |         |            |              |
-[VM1]     [VM2]        [VM3]          [VM4 opcional]
-Attacker  Victim/      Snort IDS      Gateway/DNS
-(Kali)    Target       (Ubuntu)       (Ubuntu)
-```
-
-**Roles sugeridos:**
-| VM | SO | IP ejemplo | Rol |
-|----|----|------------|-----|
-| Attacker | Kali Linux | 192.168.56.10 | Genera tráfico de prueba |
-| Victim | Ubuntu Server/Desktop | 192.168.56.20 | Objetivo (servicios web/SSH) |
-| IDS | Ubuntu Server | 192.168.56.30 | Snort en modo sniffer |
-| Gateway/DNS (opc.) | Ubuntu | 192.168.56.1 | Simula router/DNS interno |
-
-#### Configuración VirtualBox (checklist)
-1. Crear red **Host-Only** o **Internal Network** (preferible Internal para aislamiento total).
-2. Todas las VMs en la **misma** red.
-3. Para que el IDS vea tráfico entre Attacker y Victim:
-   - **Opción 1 (simple):** poner Snort en la misma red y generar tráfico hacia Victim; capturar en interfaz de Victim **o**
-   - **Opción 2 (mejor para NIDS):** bridge/tap o “promiscuous mode” en el adaptador del IDS + tráfico que pase por un punto visible (en Internal Network puro a veces el IDS no ve tráfico entre otras VMs).
-4. Solución práctica muy usada en una sola laptop:
-   - Instalar **Snort en la Victim** (HIDS/NIDS local sobre su interfaz), **o**
-   - Usar un switch virtual + port mirroring (avanzado), **o**
-   - Hacer que el IDS sea gateway (Victim con default route vía IDS) → el IDS ve el tráfico (recomendado para demo clara).
-
-**Topología “IDS como gateway” (recomendada en 1 laptop):**
-
-```text
-Attacker (56.10) ---> IDS/Gateway (56.30) ---> Victim (56.20)
-                         |
-                      Snort -i eth0
-```
-
-En Victim: ruta por defecto hacia `192.168.56.30`.  
-En Attacker: misma subred; tráfico a Victim pasa o es visible según diseño. Alternativa: dos interfaces en IDS (attacker-net / victim-net).
-
-#### Recursos mínimos sugeridos
-- Host: 16 GB RAM (ideal), 8 GB mínimo apretado
-- Kali: 2–4 GB RAM, 2 CPU
-- Ubuntu Victim: 1–2 GB
-- Ubuntu IDS: 1–2 GB
-- Disco: ~40–60 GB libres
-
-#### Pasos de preparación (Escenario A)
-1. Instalar VirtualBox + Extension Pack (si se necesita).
-2. Descargar ISO Kali + Ubuntu.
-3. Crear VMs, asignar red Internal/Host-Only.
-4. Actualizar SO: `sudo apt update && sudo apt upgrade -y`
-5. Fijar IPs estáticas (netplan o NetworkManager).
-6. Verificar conectividad: `ping` entre VMs.
-7. Instalar Snort en IDS (sección 5).
-8. Instalar herramientas de prueba solo en Attacker (sección 6 — alto nivel).
-9. Escribir reglas Snort (sección 7).
-10. Ejecutar pruebas controladas y guardar evidencias (sección 8).
+| Situación del equipo | Escenario | Qué se usa |
+|----------------------|-----------|------------|
+| Una sola laptop | **A** | VirtualBox: **2 VMs** (Kali + Ubuntu) |
+| Simulación en red real | **B** | **3 laptops** (Attacker, Victim, IDS/gateway) |
 
 ---
 
-### Escenario B — 3 laptops + switch / modem / hub
+### Escenario A — Una laptop, 2 VMs (VirtualBox)
 
-**Idea:** cada integrante/rol en hardware físico; red LAN aislada.
+**Idea:** el laboratorio cabe en un solo host. No se crea una VM de IDS ni una de gateway: Snort corre en la víctima y el **host** (`192.168.56.1`) es el gateway lógico para ARP/DNS.
 
-#### Topología recomendada
+#### Topología (fija)
 
 ```text
- Laptop 1 (Attacker - Kali/Linux)
-          \
-           \ 
-            +---- [ Switch / Hub / LAN del módem ] ----+
-           /                                           \
- Laptop 2 (Victim - Ubuntu/Windows)          Laptop 3 (IDS - Ubuntu + Snort)
+[ Host Linux + VirtualBox ]
+   Host-Only adapter = 192.168.56.1   (gateway / DNS lógico del lab)
+            |
+     Host-Only  192.168.56.0/24
+            |
+     +------+------+
+     |             |
+ [VM1 Kali]    [VM2 Ubuntu]
+  Attacker      Victim + Snort + HTTP/SSH + Wireshark
+  .10           .20
 ```
 
-**Asignación de roles (equipo de 3):**
+**Roles:**
+| Nodo | SO | IP | Rol |
+|------|----|----|-----|
+| VM1 Attacker | Kali Linux | 192.168.56.10/24 | Genera el tráfico de prueba |
+| VM2 Victim + IDS | Ubuntu Server/Desktop | 192.168.56.20/24, GW `.1` | Servicios objetivo, Snort, Wireshark, `ss`/`netstat` |
+| Host (no es VM) | Linux del equipo | 192.168.56.1/24 | Tercer nodo L2: gateway que se suplanta en ARP/DNS |
+
+`HOME_NET`: `192.168.56.0/24`. Snort escucha la NIC Host-Only de VM2 (`snort -i <iface>`).
+
+#### Por qué 2 VMs bastan (y cumplen el enunciado)
+
+| Actividad | Cómo se cubre |
+|-----------|----------------|
+| Ping / ICMP | Kali → `.20`; Snort en VM2 ve `itype:8` |
+| TCP SYN Flood | Servicio en VM2; Kali inunda `.20`; alertas + `ss -ant` / `SYN-RECV` |
+| Nmap | Escaneo a `.20`; reglas SYN/NULL/FIN/XMAS |
+| Traceroute | Kali → `.20` (1 hop). Sigue generando probes ICMP/UDP; documentar la limitación |
+| ARP spoof | Envenenar ARP de VM2 respecto al gateway **host** `.1` |
+| DNS poisoning | Tras el ARP, DNS spoof hacia un **dominio de prueba** del lab (Ettercap/Bettercap) |
+
+En Methodology: el sensor está **en el host protegido**, no en un SPAN. Es válido para el homework; no es un NIDS con mirroring.
+
+#### Configuración VirtualBox (checklist)
+1. Crear **una** red **Host-Only** (`vboxnet0` / `192.168.56.0/24`). El host debe quedar con `.1`. No uses Internal Network: ahí no existe el tercer nodo para ARP/DNS.
+2. Cada VM: adaptador **Host-Only** en esa red (tráfico del lab). Si necesitan `apt`, un **segundo** adaptador NAT solo para instalar paquetes; las pruebas y las IPs de esta guía van por Host-Only, no por NAT.
+3. IPs estáticas **en la NIC Host-Only** (netplan o NetworkManager). En VM2, default gateway y DNS de esa NIC = `192.168.56.1`. Durante las pruebas, no uses la NIC NAT como ruta a la víctima.
+4. Promiscuous mode en el adaptador Host-Only de VM2: **Allow All** (útil para ver ARP).
+5. Verificar: `ping` VM1 ↔ VM2 y VM2 ↔ host `.1`.
+6. Instalar Snort **solo en VM2** (sección 5). Herramientas de prueba **solo en Kali** (sección 6).
+
+#### Recursos mínimos
+- Host: 8 GB RAM (16 GB más holgado)
+- Kali: 2–4 GB RAM, 2 CPU
+- Ubuntu Victim+Snort: 2 GB RAM, 2 CPU
+- Disco: ~30–40 GB libres (2 ISOs + 2 VMs)
+
+#### Pasos de preparación (Escenario A)
+1. Instalar VirtualBox.
+2. Descargar ISO Kali + Ubuntu.
+3. Crear **exactamente 2 VMs**, red Host-Only, IPs de la tabla.
+4. Actualizar SO: `sudo apt update && sudo apt upgrade -y`
+5. En VM2: para **las pruebas**, gateway/DNS de la NIC Host-Only = `.1`; servicio HTTP (nginx o `python3 -m http.server 80`). El NAT, si existe, solo para instalar paquetes **antes** del plan de pruebas.
+6. `ping` Attacker ↔ Victim y Victim ↔ host.
+7. Instalar Snort en VM2 (sección 5).
+8. Herramientas de prueba solo en Attacker (sección 6 — alto nivel).
+9. Escribir reglas (sección 7) y ejecutar el plan de pruebas (sección 8).
+
+---
+
+### Escenario B — 3 laptops (red real)
+
+**Idea:** un integrante / un rol / una laptop. El IDS **es el gateway** entre dos segmentos, usando las dos interfaces que ya trae esa laptop (Ethernet + Wi‑Fi). Así Snort ve el tráfico unicast **sin** hub, SPAN ni switch managed.
+
+#### Topología (fija)
+
+```text
+[Laptop 1 Kali Attacker]
+  192.168.10.10/24  GW .1
+        |
+        |  Ethernet (cable directo Attacker↔IDS)
+        v
+[Laptop 3 Ubuntu IDS]
+  eth0  192.168.10.1/24     ← segmento Attacker
+  wlan0 192.168.20.1/24     ← segmento Victim
+  ip_forward=1
+  Snort en ambas interfaces (o la que reciba el flujo)
+        |
+        |  Wi‑Fi del lab (AP del equipo, WAN/Internet desconectado)
+        v
+[Laptop 2 Ubuntu Victim]
+  192.168.20.20/24  GW .1   HTTP/SSH, Wireshark, ss/netstat
+```
+
+**Asignación de roles:**
 | Persona / Laptop | Rol | Software principal |
 |------------------|-----|--------------------|
-| Integrante A | Attacker | Kali o Linux + hping3, nmap, Bettercap/Ettercap |
-| Integrante B | Victim | Servicios (web, SSH) + Wireshark + `ss`/`netstat` |
-| Integrante C | IDS Analyst | Snort + reglas + logs + captura evidencia |
+| Integrante A | Attacker | Kali: hping3, nmap, Bettercap/Ettercap |
+| Integrante B | Victim | Ubuntu: web/SSH, Wireshark, `ss`/`netstat` |
+| Integrante C | IDS / gateway | Ubuntu: forwarding + Snort + reglas + logs |
 
-#### Configuración de red (checklist)
-1. Conectar las 3 laptops al **mismo** switch/hub (o LAN del módem **sin usar Internet** si es posible).
-2. Desactivar Wi‑Fi si usarán cable (evita rutas confusas).
-3. IPs estáticas en la misma subred, por ejemplo:
+`HOME_NET`: la red de la víctima, `192.168.20.0/24`. `EXTERNAL_NET`: `192.168.10.0/24` (o `!$HOME_NET`).
 
-| Host | IP | Máscara | Gateway |
-|------|----|---------|---------|
-| Attacker | 192.168.10.10 | 255.255.255.0 | 192.168.10.1 (opc.) |
-| Victim | 192.168.10.20 | 255.255.255.0 | 192.168.10.1 |
-| IDS | 192.168.10.30 | 255.255.255.0 | 192.168.10.1 |
+#### Red y visibilidad (checklist)
+1. **Aislar:** desconectar WAN/Internet del AP. El lab no debe salir a campus ni a la red doméstica en uso.
+2. **Dos segmentos, dos NICs del IDS:** Ethernet hacia Attacker (cable directo; NICs modernas hacen auto-MDIX) y Wi‑Fi hacia Victim (AP que el equipo ya use). No añadas un cuarto dispositivo ni un hub.
+3. En IDS: `net.ipv4.ip_forward=1` (sysctl) para que el tráfico Attacker → Victim atraviese la laptop C.
+4. Rutas: Attacker GW = `192.168.10.1`; Victim GW y DNS = `192.168.20.1`.
+5. IPs estáticas (no DHCP del AP en el lab).
+6. Verificar: `ping` Attacker ↔ IDS, Victim ↔ IDS, y **Attacker ↔ Victim** (enrutado). Si este último falla, Snort no verá SYN flood ni nmap.
 
-4. **Problema clave:** en un switch moderno, el puerto del IDS **no ve** el tráfico unicast entre Attacker y Victim (salvo que esté en el camino o haya mirroring).
+| Actividad | Cómo se cubre |
+|-----------|----------------|
+| Ping, SYN flood, traceroute, nmap | Kali envía a `192.168.20.20`; el paquete pasa por el IDS; Snort alerta |
+| ARP spoof | En el segmento Victim: el gateway a suplantar es el IDS `192.168.20.1`. Kali debe estar **en ese L2** (asociar el Wi‑Fi de Kali al AP del Victim **durante la Fase 3**) |
+| DNS poisoning | Tras el ARP, DNS spoof a un dominio de **prueba**; la Victim resuelve vía el camino MITM |
 
-**Soluciones prácticas (elige una y documéntala):**
-
-| Solución | Cómo | Pros | Contras |
-|----------|------|------|---------|
-| **B1. Hub** (repetidor) | Usar hub antiguo | IDS ve todo en promiscuous | Difícil de conseguir |
-| **B2. Port mirroring / SPAN** | En switch managed, mirror puerto Victim → IDS | Correcto para NIDS | Requiere switch managed |
-| **B3. IDS en la Victim** | Snort en laptop víctima | Simple, evidencia clara | Menos “NIDS puro” |
-| **B4. IDS como gateway** | Victim usa IDS como gateway; Attacker apunta a Victim vía IDS | Muy didáctico | Config de routing |
-| **B5. Mismo segmento + ARP MITM visible** | Durante ARP spoof el tráfico pasa por Attacker; sniffea ahí **y** en IDS si se fuerza | Alineado al experimento 2 | Más caótico |
-
-**Recomendación para el curso:** **B3 o B4** si no hay switch managed; menciona en Methodology la limitación de switches y por qué eligieron esa opción.
+En Methodology explica: (1) el IDS está **en línea** como gateway, por eso ve unicast sin SPAN; (2) ARP es de enlace, por eso la Fase 3 se hace en el Wi‑Fi de la víctima.
 
 #### Pasos de preparación (Escenario B)
-1. Acordar IPs, roles y cableado.
-2. Probar `ping` entre las tres máquinas.
-3. En IDS: instalar Snort; poner interfaz en modo promiscuo si aplica (`ip link set eth0 promisc on`).
-4. En Victim: abrir un servicio (ej. `python3 -m http.server 80` o nginx) para SYN flood / nmap.
-5. En Attacker: preparar herramientas del enunciado.
-6. Sincronizar reloj (útil para correlacionar logs) y plan de pruebas.
-7. Grabar evidencia (pantallas + logs) mientras se prueba cada ataque.
+1. Acordar roles, IPs de la topología y qué NIC es eth/wlan en el IDS.
+2. Cable Attacker–IDS; Victim e IDS en el Wi‑Fi del lab; WAN desconectada.
+3. Activar forwarding en IDS; fijar GWs; probar los tres `ping` (incluido Attacker ↔ Victim).
+4. Instalar Snort en IDS (sección 5); interfaz(es) del forwarding.
+5. En Victim: servicio HTTP y Wireshark.
+6. En Attacker: herramientas del enunciado; dejar listo el Wi‑Fi para la Fase 3.
+7. Sincronizar reloj y grabar evidencia por ataque (sección 8).
 
 ---
 
@@ -247,7 +255,7 @@ sudo apt update
 sudo apt install -y snort
 ```
 
-Durante la instalación puede pedir la red a proteger (`HOME_NET`). Ejemplo: `192.168.56.0/24` (Escenario A) o `192.168.10.0/24` (Escenario B).
+Durante la instalación puede pedir la red a proteger (`HOME_NET`). Ejemplo: `192.168.56.0/24` (Escenario A, Host-Only) o `192.168.20.0/24` (Escenario B, red de la víctima).
 
 Verifica:
 
@@ -257,8 +265,12 @@ snort -V
 
 ### 5.2 Variables importantes
 En configuración, define:
-- `HOME_NET`: red interna a proteger
-- `EXTERNAL_NET`: normalmente `!$HOME_NET` o `any` (según política)
+- `HOME_NET`: red a proteger — A: `192.168.56.0/24`; B: `192.168.20.0/24`
+- `EXTERNAL_NET`: A: `any` o `!$HOME_NET`; B: `192.168.10.0/24` (segmento Attacker)
+
+Instala Snort **donde está el sensor**:
+- Escenario A: en **VM2** (Victim)
+- Escenario B: en **laptop IDS** (integrante C)
 
 ### 5.3 Crear archivo de reglas del equipo
 
@@ -278,7 +290,8 @@ include $RULE_PATH/local_hw2.rules
 ### 5.4 Ejecutar Snort en modo IDS (consola)
 
 ```bash
-# Cambia eth0 por tu interfaz (ip a)
+# Cambia eth0 por la interfaz del sensor (ip a)
+# A: NIC Host-Only de VM2     B: NIC del IDS que ve el flujo (eth0 y/o wlan0)
 sudo snort -A console -q -c /etc/snort/snort.conf -i eth0
 ```
 
@@ -286,6 +299,7 @@ Otras opciones útiles:
 - `-A fast` / logs en `/var/log/snort/`
 - `-k none` (a veces en labs con checksums raros en VMs)
 - Probar regla contra un PCAP: `snort -c snort.conf -r captura.pcap -A console`
+- Escenario B: si el tráfico entra por una NIC y sale por otra, corre Snort en la interfaz donde confirmes el PCAP (o una instancia por NIC)
 
 ### 5.5 Evidencias a guardar
 - Contenido de `local_hw2.rules`
@@ -497,8 +511,10 @@ alert tcp any any -> $HOME_NET any ( \
 Sigue este orden en el laboratorio y en el video.
 
 ### Fase 0 — Baseline
-1. Levantar red y verificar `ping` Attacker ↔ Victim ↔ IDS.
-2. Arrancar Snort con reglas cargadas.
+1. Levantar la red del escenario elegido:
+   - **A:** `ping` Attacker ↔ Victim y Victim ↔ host `.1`
+   - **B:** `ping` Attacker ↔ IDS, Victim ↔ IDS y Attacker ↔ Victim (enrutado)
+2. Arrancar Snort en el sensor (VM2 en A; laptop IDS en B) con reglas cargadas.
 3. Generar tráfico legítimo breve (HTTP GET, un ping).
 4. Confirmar que **no** hay ráfaga de alertas absurdas (o documentar las que sí).
 
@@ -515,17 +531,19 @@ Sigue este orden en el laboratorio y en el video.
 5. Detener el test; no saturar el host hasta colgarlo si no es necesario.
 
 ### Fase 3 — ARP + DNS Poisoning
-1. Documentar ARP table antes (`ip neigh` / `arp -a`).
-2. Ejecutar ARP poisoning en LAN de lab (Bettercap/Ettercap).
+1. Documentar ARP table antes (`ip neigh` / `arp -a`) en Victim (y en el gateway: host `.1` en A, IDS `192.168.20.1` en B).
+2. Ejecutar ARP poisoning **en el L2 de la víctima** (Bettercap/Ettercap), suplantando el gateway del lab:
+   - **A:** gateway = host `192.168.56.1` (Kali ya está en ese Host-Only)
+   - **B:** gateway = IDS `192.168.20.1` (Kali se asocia al Wi‑Fi de la víctima para esta fase)
 3. Preparar `etter.dns` (o equivalente) con dominio de **prueba** controlado.
 4. Desde Victim, resolver/navegar al dominio de prueba; observar redirección.
 5. Evidencia: PCAP ARP + DNS, tablas ARP alteradas, alertas Snort relacionadas.
-6. Restaurar red (parar spoof, flush ARP).
+6. Restaurar red (parar spoof, flush ARP). En B, Kali puede volver al Ethernet para el resto de pruebas.
 
 ### Fase 4 — Traceroute
-1. `traceroute` / `tracert` hacia Victim o gateway del lab.
+1. `traceroute` / `tracert` hacia Victim (A: 1 hop; B: 2 hops vía IDS).
 2. Validar alertas TTL/UDP.
-3. Guardar salida del comando + alerta.
+3. Guardar salida del comando + alerta. Documentar si el path es corto.
 
 ### Fase 5 — Nmap
 1. Escaneos controlados al host Victim (SYN, y opcionalmente NULL/FIN/XMAS).
@@ -558,7 +576,7 @@ Para cada ataque, ten al menos:
 | Min | Quién | Contenido |
 |-----|-------|-----------|
 | 0:00–1:00 | Todos a cámara | Presentación: nombres, IDs, HW2, objetivo IDS/Snort |
-| 1:00–3:00 | Integrante C | Topología (Escenario A o B), HOME_NET, instalación Snort |
+| 1:00–3:00 | Integrante C | Topología (A: 2 VMs Host-Only, o B: 3 laptops + IDS gateway), HOME_NET, instalación Snort |
 | 3:00–6:00 | Integrante A | Demo SYN flood + muestra alerta; explica handshake/half-open |
 | 6:00–9:00 | Integrante B | Demo ARP/DNS poisoning + evidencia Victim/Wireshark + regla |
 | 9:00–12:00 | Integrante C/A | Traceroute + Nmap + alertas de scan |
@@ -593,7 +611,7 @@ Usa esta rúbrica (100 pts) para autoevaluación del equipo antes de subir.
 | **Portada y formalidades** | Todos los campos + nombre de archivo correcto | Falta menor | Mal nombre / sin datos | /5 |
 | **Abstract** | Claro, completo, refleja resultados reales | Genérico pero correcto | Vacío o no relacionado | /5 |
 | **Introduction** | Contextualiza IDS/Snort/ataques con citas | Superficial | Sin marco teórico | /5 |
-| **Methodology** | Topología (A o B), IPs, tools, reglas, procedimiento reproducible | Faltan detalles de red/Snort | No se entiende el lab | /10 |
+| **Methodology** | Topología (A: 2 VMs o B: 3 laptops), IPs, dónde corre Snort, tools, reglas, procedimiento reproducible | Faltan detalles de red/Snort | No se entiende el lab | /10 |
 | **Reglas Snort** | Reglas para **todos** los tipos pedidos, explicadas y con SID | Cubren la mayoría | Pocas o copiadas sin explicación | /10 |
 | **Results & Discussion** | Evidencia por ataque (alertas+PCAP+análisis) | Evidencia parcial | Solo teoría sin pruebas | /15 |
 | **Conclusions** | Críticas, limitaciones, trabajo futuro | Conclusión breve | Ausente | /5 |
@@ -643,7 +661,7 @@ Usa esta rúbrica (100 pts) para autoevaluación del equipo antes de subir.
 
 1. **Prioriza evidencia:** el profesor quiere ver reglas + alertas reales, no solo teoría del SYN flood.
 2. **Tabla resumen** en Results: Ataque | Herramienta | SID | ¿Detectado? | Screenshot.
-3. **Un escenario bien hecho** > dos escenarios a medias. Documenta limitaciones (switch sin SPAN, etc.).
+3. **Un escenario bien hecho** (A **o** B) es suficiente. En Methodology declara colocación del sensor: A = Snort en la víctima; B = Snort en el gateway. No montes VMs/laptops extra.
 4. **Seguridad:** red aislada; dominios de prueba; no credenciales reales; detén floods al obtener evidencia.
 5. **Coherencia video ↔ PDF:** mismas IPs, mismas reglas, mismas figuras.
 6. **Cita referencias del PDF:** Kurose/Ross [1], Snort [4], Bettercap [6], Ettercap [7], Kali [8], etc.
@@ -656,24 +674,30 @@ Usa esta rúbrica (100 pts) para autoevaluación del equipo antes de subir.
 
 ## 13. Diagrama rápido para pegar en Methodology
 
-### Escenario A (VirtualBox)
+### Escenario A (1 laptop, 2 VMs, Host-Only)
 ```text
-[Kali Attacker 192.168.56.10]
-            |
-            v
-[Ubuntu IDS/GW 192.168.56.30]  <-- Snort -i ethX + local_hw2.rules
-            |
-            v
-[Ubuntu Victim 192.168.56.20]  (HTTP/SSH; ss/netstat; Wireshark)
+[Host 192.168.56.1]  gateway lógico (ARP/DNS)
+         |
+   Host-Only 192.168.56.0/24
+         |
+    +----+----+
+    |         |
+[Kali .10]  [Ubuntu Victim+Snort .20]
+ Attacker    HTTP/SSH; ss/netstat; Wireshark
+             snort -i <host-only nic> + local_hw2.rules
 ```
 
-### Escenario B (3 laptops + switch)
+### Escenario B (3 laptops, IDS como gateway)
 ```text
-[Attacker .10] ----\
-                    +---- [Switch/Hub] ---- [IDS .30 Snort]
-[Victim .20] ------/
+[Kali Attacker 192.168.10.10]
+        | Ethernet
+        v
+[Ubuntu IDS 10.1 / 20.1]  ip_forward=1; Snort; local_hw2.rules
+        | Wi-Fi lab (sin Internet)
+        v
+[Ubuntu Victim 192.168.20.20]  HTTP/SSH; Wireshark; ss/netstat
 ```
-Con nota: “IDS installed on victim / gateway / SPAN port because unmanaged switch does not mirror traffic.”
+Fase 3 ARP/DNS: Kali se une al Wi‑Fi de la víctima y suplanta `192.168.20.1`.
 
 ---
 
@@ -697,7 +721,7 @@ Además: documentación oficial de reglas Snort (Options, Thresholding, Flags) s
 
 ## 15. Cronograma sugerido del equipo (sin fechas intermedias rígidas)
 
-1. **Kickoff:** elegir Escenario A o B; asignar roles; crear chat de evidencias.
+1. **Kickoff:** Escenario A (1 laptop / 2 VMs) o B (3 laptops); asignar roles; chat de evidencias.
 2. **Lab up:** red + Snort instalado + ping OK.
 3. **Reglas v1:** ICMP + SYN + Nmap.
 4. **Pruebas v1:** capturas y ajustes de threshold.
