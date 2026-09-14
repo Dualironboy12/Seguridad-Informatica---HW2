@@ -84,21 +84,21 @@ Traceroute en A es de **1 hop**. Sigue generando probes; documenta esa limitaci�
 ## Mapa rápido: qué setup es de quién
 
 
-| Paso de setup                                                  | ¿Común?                 | Act. 1                       | Act. 2      | Act. 3                |
-| -------------------------------------------------------------- | ----------------------- | ---------------------------- | ----------- | --------------------- |
-| VirtualBox, red Host-Only, 2 VMs, IPs, `ping`                  | Sí                      | —                            | —           | —                     |
-| `apt update` / upgrade en ambas VMs                            | Sí                      | —                            | —           | —                     |
-| Snort en VM2 + `local_hw2.rules` + arranque en consola         | Sí                      | —                            | —           | —                     |
-| Wireshark en VM2                                               | Sí (evidencia de todas) | recomendado                  | recomendado | obligatorio           |
-| Herramientas de recon en Kali (`ping`, `traceroute`, `nmap`)   | —                       | **Sí**                       | —           | —                     |
-| Reglas ICMP / traceroute / nmap                                | —                       | **Sí**                       | —           | —                     |
-| HTTP (nginx o `python3 -m http.server 80`) en VM2              | —                       | opcional (nmap ve el puerto) | **Sí**      | útil (HTTP tras MITM) |
-| `hping3` (u otra herramienta de SYN citada en la guía) en Kali | —                       | —                            | **Sí**      | —                     |
-| Reglas SYN flood                                               | —                       | —                            | **Sí**      | —                     |
-| Promiscuous **Allow All** en Host-Only de VM2                  | recomendado ya en común | —                            | —           | **Sí**                |
-| Bettercap / Ettercap + `etter.dns` de prueba                   | —                       | —                            | —           | **Sí**                |
-| Comprobar `ping` VM2 ↔ host `.1`                               | Sí (baseline)           | —                            | —           | **crítico**           |
-| Reglas ARP / DNS                                               | —                       | —                            | —           | **Sí**                |
+| Paso de setup                                                    | ¿Común?                 | Act. 1                       | Act. 2      | Act. 3                |
+| ---------------------------------------------------------------- | ----------------------- | ---------------------------- | ----------- | --------------------- |
+| VirtualBox, red Host-Only, 2 VMs, IPs, `ping`                    | Sí                      | —                            | —           | —                     |
+| `apt update` / upgrade en ambas VMs                              | Sí                      | —                            | —           | —                     |
+| Snort en VM2 + `local_hw2.rules` + arranque en consola           | Sí                      | —                            | —           | —                     |
+| Wireshark en VM2                                                 | Sí (evidencia de todas) | recomendado                  | recomendado | obligatorio           |
+| Herramientas de recon en Kali (`ping`, `traceroute`, `nmap`)     | —                       | **Sí**                       | —           | —                     |
+| Reglas ICMP / traceroute / nmap                                  | —                       | **Sí**                       | —           | —                     |
+| HTTP (nginx o `python3 -m http.server 80`) en VM2                | —                       | opcional (nmap ve el puerto) | **Sí**      | útil (HTTP tras MITM) |
+| `hping3`, Scapy y referencia RUDY en Kali (instalar y verificar) | —                       | —                            | **Sí**      | —                     |
+| Reglas SYN flood                                                 | —                       | —                            | **Sí**      | —                     |
+| Promiscuous **Allow All** en Host-Only de VM2                    | recomendado ya en común | —                            | —           | **Sí**                |
+| Bettercap / Ettercap + `etter.dns` de prueba                     | —                       | —                            | —           | **Sí**                |
+| Comprobar `ping` VM2 ↔ host `.1`                                 | Sí (baseline)           | —                            | —           | **crítico**           |
+| Reglas ARP / DNS                                                 | —                       | —                            | —           | **Sí**                |
 
 
 ---
@@ -250,18 +250,72 @@ sudo usermod -aG wireshark "$USER"
 
 ### C8. Herramientas en VM1 - Kali
 
-Instala lo que pide el enunciado **solo en la VM1, Attacker**.
+Instala lo que pide el enunciado **solo en la VM1, Attacker**. Usa el adaptador NAT para `apt`.
 
-Paquetes frecuentes en Kali (ajusta si ya vienen preinstalados):
+#### C8.1 Recon y MITM (actividades 1 y 3)
 
 ```bash
 sudo apt update
-sudo apt install -y nmap traceroute hping3 ettercap-graphical
+sudo apt install -y nmap traceroute ettercap-graphical
 ```
 
 Bettercap suele venir en Kali; si no: instálalo desde la documentación oficial de Kali/Bettercap.
 
-Hasta aquí el entorno **arranca**. Aún faltan reglas y servicios especificos por actividad.
+Comprueba recon:
+
+```bash
+command -v ping traceroute nmap
+nmap --version
+```
+
+
+
+#### C8.2 Actividad 2 — instalar y verificar hping3, Scapy y RUDY
+
+El procedimiento 1 del PDF cita hping3, Scapy y RUDY (entre otras). En este setup el objetivo es **dejarlas instaladas o documentadas y demostrar que existen** antes de la actividad.
+
+**hping3** (paquete de Kali/Debian):
+
+```bash
+sudo apt install -y hping3
+command -v hping3
+hping3 -v
+```
+
+Debe imprimir una ruta (`/usr/sbin/hping3` o similar) y la versión. Guarda un screenshot en `Setup/Evidencias/` si documentas el lab en el PDF.
+
+**Scapy** (módulo Python; en Kali/Debian el paquete es `python3-scapy`):
+
+```bash
+sudo apt install -y python3-scapy
+python3 -c "import scapy; print('scapy', scapy.VERSION)"
+command -v scapy
+scapy --version
+```
+
+- `import scapy` sin `ModuleNotFoundError` = instalación correcta.
+- `scapy` (CLI interactiva) puede existir o no según el paquete; lo imprescindible para el homework es el **import**.
+- Si `scapy.VERSION` falla en tu build, basta: `python3 -c "import scapy; print('ok')"`.
+
+**RUDY** RUDY (R-U-Dead-Yet?) no tiene un paquete apt oficial ni viene incluido en kali linux ni sus repositorios. Se puede descargar desde Github [RUDY (R-U-Dead-Yet?)](https://github.com/darkweak/rudy)
+
+1. Abre y guarda la referencia oficial del PDF: [Invicti — RUDY attack](https://www.invicti.com/learn/rudy-attack).
+2. Comprueba que no hay binario de distro (esperado):
+
+```bash
+command -v rudy || echo "sin paquete rudy (esperado)"
+apt-cache search rudy
+```
+
+1. En Methodology/Bibliography cita [11]. La actividad 2 de SYN flood **no depende** de un binario RUDY; hping3 o Scapy cubren el procedimiento 1 (TCP SYN). RUDY se documenta como DoS distinto (HTTP lento).
+
+Checklist C8.2 (Kali):
+
+- [ ] `hping3 -v` funciona
+- [ ] `python3 -c "import scapy"` funciona
+- [ ] Referencia RUDY [11] leída y citada; no hay (ni se requiere) `apt install rudy`
+
+Hasta aquí el entorno **arranca**. Aún faltan reglas y servicios específicos por actividad.
 
 ### C9. Baseline mínimo (Fase 0 parcial)
 
@@ -367,6 +421,8 @@ Si quieres que nmap muestre un servicio real en el puerto 80, adelanta el [paso 
 
 ## Setup específico — Actividad 2: SYN Flood
 
+
+
 ### S2.1 Servicio objetivo en VM2
 
 Necesitas un puerto TCP escuchando (80 / 443 / 22). Ejemplo mínimo:
@@ -397,15 +453,23 @@ ss -ant
 
 
 
-### S2.3 Herramienta de generación en Kali
+### S2.3 Herramientas en Kali (hping3, Scapy, RUDY)
 
-Instala al menos una de las citadas en el enunciado para SYN flood (`hping3`, Scapy, etc.). Comprobar que el binario existe basta para el setup:
+Si saltaste C8.2, instálalas ahora. El énfasis de este paso es **verificar** que quedan listas; cómo usarlas en la prueba está en la [actividad 2](../../Act2/Simulacion/README.md) (documentación oficial + ética), no aquí.
+
+Repite las comprobaciones y guarda evidencia de instalación:
 
 ```bash
-command -v hping3
+command -v hping3 && hping3 -v
+python3 -c "import scapy; print('scapy ok')"
+command -v rudy || echo "sin binario rudy (esperado; ver referencia [11] del PDF)"
 ```
 
-Referirse a la guia de actividad para revisar el playbook de ataque y la informacion que se debe recopilar para los entregables.
+- [ ] hping3 instalado y `hping3 -v` OK
+- [ ] Scapy importable (`python3-scapy`)
+- [ ] RUDY: referencia [11] del enunciado consultada (no hay paquete apt)
+
+
 
 ### S2.4 Reglas SYN flood (VM2)
 
@@ -438,6 +502,8 @@ Reinicia Snort. Empieza sin `threshold` si la alerta no dispara; luego ajústalo
 
 ---
 
+
+
 ## Setup específico — Actividad 3: ARP + DNS
 
 Esta actividad usa el **host** `.1` **como gateway**. Kali ya está en el mismo L2 Host-Only (no hay que cambiar de red, a diferencia del escenario B).
@@ -448,6 +514,8 @@ Esta actividad usa el **host** `.1` **como gateway**. Kali ya está en el mismo 
 2. `ping -c 3 192.168.56.1` desde VM2 **y** desde Kali.
 3. En VM2, anota la tabla ARP **antes** de la prueba: `ip neigh`.
 4. En el host, también puedes guardar `ip neigh` de `vboxnet0`.
+
+
 
 ### S3.2 Herramientas MITM en Kali (instalación)
 
@@ -508,6 +576,8 @@ El SID 1003002 y la demo de redirección se entienden mejor con un servicio web 
 
 ---
 
+
+
 ## Setup completo antes de las 3 actividades
 
 Orden recomendado:
@@ -522,11 +592,13 @@ Orden recomendado:
 - [ ] Snort en VM2 sobre NIC Host-Only, **todas** las reglas `1001xxx`–`1006xxx` cargadas
 - [ ] nginx (o HTTP) en `.20:80`
 - [ ] Wireshark en VM2
-- [ ] Kali: nmap, traceroute, hping3, Bettercap/Ettercap
+- [ ] Kali: nmap, traceroute, **hping3**, **Scapy** (`import scapy`), Bettercap/Ettercap; referencia RUDY [11]
 - [ ] `etter.dns` de prueba listo
 - [ ] Promiscuous Allow All
 
 ---
+
+
 
 ## Problemas frecuentes (simulación)
 
@@ -541,6 +613,7 @@ Orden recomendado:
 | `alert arp` no carga        | Build sin decoder ARP; usa Wireshark + discusión (guía 7.3)                                             |
 | Traceroute de 1 hop         | Esperado en A; documentar en Methodology                                                                |
 | NAT “roba” el default route | Métrica: Host-Only puede no ser el default; el lab solo exige L2/L3 Host-Only entre `.10`, `.20` y `.1` |
+| `import scapy` falla        | `sudo apt install -y python3-scapy` (vía NAT); luego `python3 -c "import scapy"`                        |
 
 
 ---

@@ -2,8 +2,7 @@
 
 Ping/ICMP, traceroute y nmap desde Kali (`192.168.56.10`) hacia la víctima (`192.168.56.20`), con Snort y Wireshark en VM2.
 
-Setup de esta actividad: [`../../Setup/Simulacion/README.md`](../../Setup/Simulacion/README.md) (apartado *Setup específico — Actividad 1*).  
-Guía del curso: [`../../Guia_HW2_IDS_Snort_LIS4062.md`](../../Guia_HW2_IDS_Snort_LIS4062.md).
+Setup de esta actividad: `[../../Setup/Simulacion/README.md](../../Setup/Simulacion/README.md)` (apartado *Setup específico — Actividad 1*).
 
 ---
 
@@ -21,51 +20,59 @@ Guía del curso: [`../../Guia_HW2_IDS_Snort_LIS4062.md`](../../Guia_HW2_IDS_Snor
 
 ---
 
+
+
 ## Resumen
 
 En esta actividad el equipo **genera tráfico de reconocimiento** contra la víctima del lab y **comprueba que el IDS lo identifica**. Cubres tres tipos que pide el enunciado: eco ICMP, traceroute y escaneo de puertos (nmap).
 
-| Qué haces | Para qué | Por qué importa en la entrega |
-|-----------|----------|-------------------------------|
-| Ping Kali → Ubuntu | Disparar SIDs `1001001` / `1001002` y mostrar ICMP en Wireshark | Rúbrica: detección Ping/ICMP documentada |
-| Traceroute a `.20` | Probes con TTL bajo o UDP 33434–33534; SIDs `1005001` / `1005002` | Rúbrica: detección traceroute; en simulación el path es **1 hop** y hay que explicarlo en Methodology |
-| Nmap a `.20` | SYN (y opcional NULL/FIN/XMAS); SIDs `1006001`–`1006004` | Rúbrica: detección nmap; en Results: qué vio el “atacante” (puertos/OS) vs qué alertó Snort |
 
-Sin estas capturas el reporte se queda en teoría: el profesor evalúa **regla + alerta + PCAP** por cada tipo.
+| Qué haces          | Para qué                                                          | Por qué importa en la entrega                                                                         |
+| ------------------ | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Ping Kali → Ubuntu | Disparar SIDs `1001001` / `1001002` y mostrar ICMP en Wireshark   | Rúbrica: detección Ping/ICMP documentada                                                              |
+| Traceroute a `.20` | Probes con TTL bajo o UDP 33434–33534; SIDs `1005001` / `1005002` | Rúbrica: detección traceroute; en simulación el path es **1 hop** y hay que explicarlo en Methodology |
+| Nmap a `.20`       | SYN (y opcional NULL/FIN/XMAS); SIDs `1006001`–`1006004`          | Rúbrica: detección nmap; en Results: qué vio el “atacante” (puertos/OS) vs qué alertó Snort           |
+
 
 Trabajo **solo** en Host-Only (`192.168.56.0/24`). Destino único de las pruebas: `192.168.56.20`.
 
 ---
 
+
+
 ## Estado de partida
 
 Se asume el **setup común de simulación** terminado (VMs, IPs, `ping` Attacker ↔ Victim, Snort instalado en VM2, `local_hw2.rules` incluido en la config, Wireshark en Ubuntu, `ping` / `traceroute` / `nmap` en Kali).
 
-No se repite aquí cómo crear la red ni cómo instalar paquetes. Si algo de esa lista falla, vuelve al setup común **antes** de seguir.
-
 IPs de trabajo:
 
-| Nodo | IP |
-|------|-----|
-| Kali (tráfico) | 192.168.56.10 |
-| Ubuntu (Snort + Wireshark) | 192.168.56.20 |
-| Host (no se usa como objetivo en esta actividad) | 192.168.56.1 |
+
+| Nodo                                             | IP            |
+| ------------------------------------------------ | ------------- |
+| Kali (tráfico)                                   | 192.168.56.10 |
+| Ubuntu (Snort + Wireshark)                       | 192.168.56.20 |
+| Host (no se usa como objetivo en esta actividad) | 192.168.56.1  |
+
 
 ---
 
+
+
 ## Antes de generar tráfico
 
-En VM2:
+En VM2 - Ubuntu - Victima:
 
 1. Asegúrate de tener en `local_hw2.rules` las reglas de reconocimiento del setup (SIDs `1001001`, `1001002`, `1005001`, `1005002`, `1006001`–`1006004`). Si el archivo aún está vacío, cópialas desde el setup de la actividad 1 y recarga Snort.
 2. Arranca Snort en **consola** sobre la NIC **Host-Only** (mismo comando e interfaz que en el setup). Déjala visible: es tu evidencia de alertas.
 3. Abre Wireshark en esa misma NIC. No hace falta capturar las tres pruebas en un solo archivo: un PCAP (o screenshot del filtro) por prueba suele leerse mejor en el PDF.
 
-Carpeta sugerida: `Act1/Evidencias/<tu_nombre>/`.
+Carpeta sugerida: `Act1/Simulacion/Evidencias/<tu_nombre>/`.
 
 **Evidencia ahora:** captura del archivo de reglas (texto o screenshot) y de Snort arrancando sin error de sintaxis.
 
 ---
+
+
 
 ## 1. Baseline
 
@@ -79,6 +86,8 @@ Objetivo: saber qué es “normal” antes del reconocimiento.
 
 ---
 
+
+
 ## 2. Ping / ICMP
 
 Objetivo: demostrar detección de eco ICMP hacia `HOME_NET`.
@@ -87,6 +96,8 @@ Objetivo: demostrar detección de eco ICMP hacia `HOME_NET`.
 
 - Wireshark: filtro `icmp`.
 - Snort: consola a la vista.
+
+
 
 ### En Kali
 
@@ -100,15 +111,19 @@ Para el SID de flood (`1001002`, umbral 50 ecos / 10 s en la regla del setup), g
 
 ### Qué debe coincidir
 
-| Pieza | Qué buscar |
-|-------|------------|
-| Snort | `HW2 ICMP Echo Request to HOME_NET` (`1001001`); opcionalmente flood `1001002` |
-| Wireshark | Echo request (type 8) `.10` → `.20` y reply type 0 |
-| Kali | Salida del `ping` con replies |
+
+| Pieza     | Qué buscar                                                                     |
+| --------- | ------------------------------------------------------------------------------ |
+| Snort     | `HW2 ICMP Echo Request to HOME_NET` (`1001001`); opcionalmente flood `1001002` |
+| Wireshark | Echo request (type 8) `.10` → `.20` y reply type 0                             |
+| Kali      | Salida del `ping` con replies                                                  |
+
 
 **Evidencia:** screenshot de la alerta Snort, screenshot o PCAP de Wireshark (`icmp`), screenshot de la terminal de Kali. En Results: la regla mira `itype:8` hacia `$HOME_NET`.
 
 ---
+
+
 
 ## 3. Traceroute
 
@@ -118,6 +133,8 @@ Objetivo: probes de mapeo de ruta. En este escenario hay **un solo salto** (Kali
 
 - Wireshark: `icmp or udp.port >= 33434`.
 - Snort en consola.
+
+
 
 ### En Kali
 
@@ -129,21 +146,25 @@ Si tu Kali usa UDP por defecto y no ves `1005002`, prueba la variante ICMP de `t
 
 ### Qué debe coincidir
 
-| Pieza | Qué buscar |
-|-------|------------|
-| Salida de traceroute | Una línea hacia `.20` (1 hop) |
-| Snort | `1005001` (ICMP con TTL bajo) y/o `1005002` (UDP traceroute) |
-| Wireshark | TTL pequeño y/o UDP hacia 33434–33534 |
+
+| Pieza                | Qué buscar                                                   |
+| -------------------- | ------------------------------------------------------------ |
+| Salida de traceroute | Una línea hacia `.20` (1 hop)                                |
+| Snort                | `1005001` (ICMP con TTL bajo) y/o `1005002` (UDP traceroute) |
+| Wireshark            | TTL pequeño y/o UDP hacia 33434–33534                        |
+
 
 **Evidencia:** salida completa del comando, alerta Snort, PCAP o screenshot del filtro. En Discussion: por qué 1 hop no impide detectar el *probe*.
 
 ---
 
+
+
 ## 4. Nmap
 
 Objetivo: escaneo controlado **solo** a `192.168.56.20` y correlación con SIDs de scan.
 
-Un servicio HTTP en la víctima no es obligatorio para que Snort vea el scan; sí ayuda a que nmap liste el puerto 80 en Results. Si ya lo tienes del setup de la actividad 2, déjalo; si no, no hace falta instalarlo para esta actividad.
+Un servicio HTTP en la víctima no es obligatorio para que Snort vea el scan; sí ayuda a que nmap liste el puerto 80 en Results. Si ya lo tienes del setup de la actividad 2, déjalo; si no, no es obligatorio instalarlo para esta actividad.
 
 ### En Ubuntu
 
@@ -151,25 +172,110 @@ Un servicio HTTP en la víctima no es obligatorio para que Snort vea el scan; s�
 - Snort en consola.
 - Opcional: anota `ss -tlnp` *antes* del scan (qué hay escuchando) para contrastar con el informe de nmap.
 
-### En Kali
 
-Escaneo SYN hacia la víctima del lab (el tipo que el enunciado asocia a nmap “stealth”). Añade, si da tiempo, NULL / FIN / XMAS para cubrir `1006002`–`1006004`. El destino es **únicamente** `.20` en Host-Only.
 
-Consulta la documentación de nmap del curso / Kali para la sintaxis de cada tipo de scan (`-sS`, y las variantes NULL/FIN/XMAS). Si el enunciado pide *mapping* de servicios u OS, un scan de versiones (`-sV`) o de SO (`-O`) contra `.20` basta para discutir “qué reveló nmap” en Results; no escanees otras redes.
+### En Kali — comandos
 
-Haz **un tipo de scan cada vez** y mira qué SID aparece. Si `1006001` no dispara, el umbral del setup (20 SYN / 5 s) puede ser alto para un scan corto: bájalo, recarga Snort y repite, o documenta el ajuste.
+El destino es **únicamente** `192.168.56.20` en Host-Only. Haz **un tipo de scan cada vez**, espera las alertas de Snort, guarda evidencia y recién entonces lanza el siguiente.
+
+Cómo se lee un comando de nmap:
+
+```text
+sudo nmap [tipo de scan] [opciones extra] 192.168.56.20
+```
+
+
+| Pieza                                   | Qué hace                                                                                                                            |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `sudo`                                  | Privilegio para sockets crudos. Sin root, nmap a menudo cae a un connect scan (`-sT`) y **no** genera NULL/FIN/XMAS ni un SYN puro. |
+| `nmap`                                  | El escáner.                                                                                                                         |
+| `-sS`, `-sN`, `-sF`, `-sX`, `-sV`, `-O` | Tipo de prueba (ver cada comando abajo).                                                                                            |
+| `192.168.56.20`                         | Único host permitido: la víctima del lab. No uses rangos (`192.168.56.0/24`) ni otras IPs.                                          |
+
+
+**Scan por defecto (TCP connect / SYN según privilegios)** — útil como primer mapeo de puertos; puede parecerse a `-sS` si usas `sudo`, o a `-sT` si no:
+
+```bash
+sudo nmap 192.168.56.20
+```
+
+- `sudo nmap` — ejecuta nmap con privilegios.
+- `192.168.56.20` — host objetivo. Sin `-s…`, nmap elige el scan TCP por defecto.
+
+**SYN scan (**`-sS`**) — SID** `1006001` (el “stealth” del enunciado; muchos SYN a puertos distintos):
+
+```bash
+sudo nmap -sS 192.168.56.20
+```
+
+- `-sS` — TCP SYN scan: envía SYN y no completa el handshake (no manda ACK final). Es el que debe disparar `1006001`.
+
+Si el umbral de la regla (20 SYN / 5 s en el setup) no se alcanza con el conjunto de puertos por defecto, amplía un poco el rango **solo en la víctima**:
+
+```bash
+sudo nmap -sS -p 1-1000 192.168.56.20
+```
+
+- `-p 1-1000` — escanea los puertos TCP 1 a 1000 (más SYN, más fácil cruzar el `threshold`). No uses `-p-` (todos los puertos) salvo que el scan por defecto no dispare y lo documentes: tarda más y genera mucho ruido.
+
+**NULL scan (**`-sN`**) — SID** `1006002`**:**
+
+```bash
+sudo nmap -sN 192.168.56.20
+```
+
+- `-sN` — segmentos TCP sin flags (campo de flags = 0). Coincide con `flags:0` de la regla.
+
+**FIN scan (**`-sF`**) — SID** `1006003`**:**
+
+```bash
+sudo nmap -sF 192.168.56.20
+```
+
+- `-sF` — solo el flag FIN. Coincide con `flags:F` de la regla.
+
+**XMAS scan (**`-sX`**) — SID** `1006004`**:**
+
+```bash
+sudo nmap -sX 192.168.56.20
+```
+
+- `-sX` — flags FIN + PSH + URG (“árbol de Navidad”). Coincide con `flags:FPU` de la regla.
+
+**Mapeo de servicios (**`-sV`**) y de SO (**`-O`**)** — no tienen SID propio en el setup; sirven para Results (“qué reveló nmap como atacante”):
+
+```bash
+sudo nmap -sS -sV 192.168.56.20
+```
+
+- `-sS` — sigue siendo un SYN scan (puede volver a alertar `1006001`).
+- `-sV` — probes extra para adivinar servicio y versión en los puertos abiertos.
+
+```bash
+sudo nmap -sS -O 192.168.56.20
+```
+
+- `-O` — detección de sistema operativo (más probes; también puede ruidar Snort). Requiere `sudo`.
+
+Orden recomendado en el lab: default o `-sS` → (si hay tiempo) `-sN`, `-sF`, `-sX` → un `-sV` o `-O` para el reporte.
+
+Si `1006001` no dispara, el umbral del setup puede ser alto para un scan corto: usa `-p 1-1000`, o baja el `threshold`, recarga Snort y repite. Documenta el ajuste.
 
 ### Qué debe coincidir
 
-| Pieza | Qué buscar |
-|-------|------------|
-| nmap | Puertos abiertos/cerrados; opcionalmente servicio/OS |
-| Snort | `1006001` (SYN); si aplicaste los otros scans, `1006002`–`1006004` |
+
+| Pieza     | Qué buscar                                                          |
+| --------- | ------------------------------------------------------------------- |
+| nmap      | Puertos abiertos/cerrados; opcionalmente servicio/OS                |
+| Snort     | `1006001` (SYN); si aplicaste los otros scans, `1006002`–`1006004`  |
 | Wireshark | Muchos SYN a puertos distintos, o flags NULL/FIN/XMAS según el scan |
+
 
 **Evidencia:** salida de nmap, alerta(s) Snort por tipo de scan, PCAP o screenshot. En Results: tabla *scan → SID → ¿detectado?* y una nota de falso positivo (un nmap de administrador se vería igual).
 
 ---
+
+
 
 ## Qué llevar al reporte y al video
 
@@ -195,6 +301,8 @@ Act1/Evidencias/<nombre>/
 ```
 
 ---
+
+
 
 ## Checklist de evidencias
 
