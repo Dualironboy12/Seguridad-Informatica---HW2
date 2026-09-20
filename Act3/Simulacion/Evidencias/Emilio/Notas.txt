@@ -1,0 +1,1 @@
+Sobre reglas de Snort en maquina virtual victima: snort 2.9 no carga protocolo arp, no se incluye en las reglas la regla para deteccion de paquetes arp.
