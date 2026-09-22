@@ -1,0 +1,1 @@
+Notas sobre alerta de flood: Con umbral original de 50 mensajes en 10 segundos no se dispara la alerta, se cambia por tanto a un umbral de 5 por 10 segundos para demostrar su activacion.
